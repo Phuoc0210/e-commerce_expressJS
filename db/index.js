@@ -1,20 +1,18 @@
 import dotenv from 'dotenv';
 import { Sequelize } from 'sequelize';
 
-// Load biến môi trường
 dotenv.config();
 
-// Kiểm tra xem biến DATABASE_DIALECT có tồn tại không
 console.log('DATABASE_DIALECT:', process.env.DATABASE_DIALECT);
 
 const sequelize = new Sequelize(
   process.env.DATABASE_NAME,
   process.env.DATABASE_USERNAME,
-  process.env.DATABASE_PASSWORD || '', // Tránh lỗi nếu PASSWORD là null
+  process.env.DATABASE_PASSWORD || '',
   {
     host: process.env.DATABASE_HOST,
-    dialect: process.env.DATABASE_DIALECT || 'mysql', // Đảm bảo giá trị không undefined
-    port: process.env.DATABASE_PORT || 3306, // Đảm bảo cổng MySQL đúng
+    dialect: process.env.DATABASE_DIALECT || 'mysql',
+    port: process.env.DATABASE_PORT || 3306,
     logging: false,
   }
 );

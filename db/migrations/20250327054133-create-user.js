@@ -9,16 +9,15 @@ export default {
         primaryKey: true,
         type: Sequelize.INTEGER,
       },
+      fullname: {
+        type: Sequelize.STRING,
+      },
+
       email: {
         type: Sequelize.STRING,
       },
-      username: {
-        type: Sequelize.STRING,
-      },
-      password: {
-        type: Sequelize.STRING,
-      },
-      phonenumber: {
+
+      phone: {
         type: Sequelize.STRING,
       },
       address: {
@@ -26,6 +25,12 @@ export default {
       },
       gender: {
         type: Sequelize.BOOLEAN,
+      },
+      username: {
+        type: Sequelize.STRING,
+      },
+      password: {
+        type: Sequelize.STRING,
       },
       createdAt: {
         allowNull: false,
