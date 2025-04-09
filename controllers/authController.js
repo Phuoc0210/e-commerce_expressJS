@@ -22,7 +22,7 @@ class authController {
     const data = req.body;
     for (let field in data) {
       if (!data[field]) {
-        return res.json({
+        return res.status(400).json({
           success: false,
           message: `Field ${field} is empty`,
         });
@@ -34,7 +34,9 @@ class authController {
         where: { username: data.username },
       });
       if (user) {
-        return res.json({ success: false, message: 'User already exist' });
+        return res
+          .status(409)
+          .json({ success: false, message: 'User already exist' });
       }
       const salt = bcrypt.genSaltSync(SALT_HASH);
       const hash = await bcrypt.hashSync(data.password, salt);
@@ -58,9 +60,9 @@ class authController {
       };
       await transporter.sendMail(mailOptions);
 
-      res.json({ success: true, message: 'Create successfully!' });
+      res.status(201).json({ success: true, message: 'Create successfully!' });
     } catch (error) {
-      res.json({ success: false, message: error.message });
+      res.status(500).json({ success: false, message: error.message });
     }
   };
   login = async (req, res) => {
