@@ -67,7 +67,7 @@ class authController {
     const { username, password } = req.body;
 
     if (!username || !password) {
-      return res.json({
+      return res.status(400).json({
         success: false,
         message: 'Username and password are required',
       });
@@ -104,26 +104,26 @@ class authController {
             maxAge: 7 * 24 * 60 * 60 * 1000,
           });
 
-          return res.json({
+          return res.status(200).json({
             success: true,
             message: 'Login successful',
             accessToken,
             user: payload,
           });
         } else {
-          return res.json({
+          return res.status(401).json({
             success: false,
             message: 'Invalid password',
           });
         }
       } else {
-        return res.json({
+        return res.status(401).json({
           success: false,
           message: 'Invalid username',
         });
       }
     } catch (error) {
-      return res.json({
+      return res.status(500).json({
         success: false,
         message: error.message,
       });
@@ -134,20 +134,25 @@ class authController {
       const refreshToken = req.cookies.refreshToken;
       if (refreshToken) {
         await RefreshToken.destroy({ where: { token: refreshToken } });
+      } else {
+        return res.status(401).json({
+          success: false,
+          message: 'Please login!',
+        });
       }
       await res.cookie('refreshToken', '', {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'Strict' : 'none',
+        sameSite: process.env.NODE_ENV === 'production' ? 'Strict' : 'Lax',
         maxAge: 0,
       });
 
-      return res.json({
+      return res.status(200).json({
         success: true,
-        message: 'Logout successful',
+        message: 'Logout successfully!',
       });
     } catch (error) {
-      return res.json({
+      return res.status(500).json({
         success: false,
         message: error.message,
       });
