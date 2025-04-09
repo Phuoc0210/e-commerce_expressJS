@@ -3,15 +3,19 @@ import bodyParser from 'body-parser';
 import initWebRoutes from './routes/index.js';
 import connectDB from './db/index.js';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import 'dotenv/config';
-
 let app = express();
 
-app.use(cors());
-
 app.use(bodyParser.json());
+app.use(cookieParser());
 app.use(bodyParser.urlencoded({ extended: true }));
-
+app.use(
+  cors({
+    origin: 'http://localhost:5173',
+    credentials: true,
+  })
+);
 initWebRoutes(app);
 
 connectDB();

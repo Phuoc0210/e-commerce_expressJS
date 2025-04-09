@@ -1,40 +1,30 @@
 'use strict';
 /** @type {import('sequelize-cli').Migration} */
-export default {
+module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('Users', {
+    await queryInterface.createTable('Otps', {
       id: {
         allowNull: false,
         primaryKey: true,
         type: Sequelize.UUID,
       },
-      fullname: {
-        type: Sequelize.STRING,
+      userId: {
+        type: Sequelize.UUID,
       },
-
       email: {
         type: Sequelize.STRING,
       },
-
-      phone: {
+      otp: {
         type: Sequelize.STRING,
       },
-      address: {
-        type: Sequelize.STRING,
+      expiresAt: {
+        type: Sequelize.DATE,
       },
-      gender: {
+      isUsed: {
         type: Sequelize.BOOLEAN,
       },
-      role: {
-        type: Sequelize.ENUM,
-        values: ['admin', 'user'],
-        defaultValue: 'user',
-      },
-      username: {
-        type: Sequelize.STRING,
-      },
-      password: {
-        type: Sequelize.STRING,
+      createdAt: {
+        type: Sequelize.DATE,
       },
       createdAt: {
         allowNull: false,
@@ -47,6 +37,6 @@ export default {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable('Users');
+    await queryInterface.dropTable('Otps');
   },
 };
