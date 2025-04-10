@@ -164,7 +164,7 @@ class authController {
     const { email } = req.body;
 
     if (!email) {
-      return res.json({
+      return res.status(400).json({
         success: false,
         message: 'Email is required',
       });
@@ -173,14 +173,16 @@ class authController {
     try {
       const user = await User.findOne({ where: { email } });
       if (!user) {
-        return res.json({
+        return res.status(404).json({
           success: false,
           message: 'Email not found',
         });
       }
-
+      await Otp.destroy({
+        where: { email },
+      });
       const otp = generateOTP();
-      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+      const expiresAt = new Date(Date.now() + 60 * 1000);
 
       await Otp.create({
         id: uuidv4(),
@@ -198,19 +200,19 @@ class authController {
         html: `
           <p>You requested to reset your password.</p>
           <p>Your OTP is: <strong>${otp}</strong></p>
-          <p>This OTP will expire in 10 minutes.</p>
+          <p>This OTP will expire in 1 minutes.</p>
           <p>If you did not request this, please ignore this email.</p>
         `,
       };
 
       await transporter.sendMail(mailOptions);
 
-      return res.json({
+      return res.status(200).json({
         success: true,
         message: 'OTP sent to your email',
       });
     } catch (error) {
-      return res.json({
+      return res.status(500).json({
         success: false,
         message: error.message,
       });
@@ -220,7 +222,7 @@ class authController {
     const { email, otp } = req.body;
 
     if (!email || !otp) {
-      return res.json({
+      return res.status(400).json({
         success: false,
         message: 'Email and OTP are required',
       });
@@ -232,14 +234,14 @@ class authController {
       });
 
       if (!otpRecord) {
-        return res.json({
+        return res.status(400).json({
           success: false,
           message: 'Invalid OTP',
         });
       }
 
       if (new Date() > new Date(otpRecord.expiresAt)) {
-        return res.json({
+        return res.status(400).json({
           success: false,
           message: 'OTP has expired',
         });
@@ -247,12 +249,12 @@ class authController {
 
       await otpRecord.update({ isUsed: true });
 
-      return res.json({
+      return res.status(200).json({
         success: true,
         message: 'OTP verified successfully',
       });
     } catch (error) {
-      return res.json({
+      return res.status(500).json({
         success: false,
         message: error.message,
       });
@@ -262,7 +264,7 @@ class authController {
     const { email, newPassword } = req.body;
 
     if (!email || !newPassword) {
-      return res.json({
+      return res.status(400).json({
         success: false,
         message: 'Email and new password are required',
       });
@@ -275,7 +277,7 @@ class authController {
       });
 
       if (!otpRecord) {
-        return res.json({
+        return res.status(400).json({
           success: false,
           message:
             'No verified OTP found. Please request and verify OTP first.',
@@ -284,9 +286,16 @@ class authController {
 
       const user = await User.findOne({ where: { email } });
       if (!user) {
-        return res.json({
+        return res.status(404).json({
           success: false,
           message: 'User not found',
+        });
+      }
+      const isMatch = await bcrypt.compare(newPassword, user.password);
+      if (isMatch) {
+        return res.status(400).json({
+          success: false,
+          message: 'New password cannot be the same as the old password',
         });
       }
 
@@ -297,12 +306,12 @@ class authController {
 
       await Otp.destroy({ where: { email } });
 
-      return res.json({
+      return res.status(200).json({
         success: true,
         message: 'Password reset successfully',
       });
     } catch (error) {
-      return res.json({
+      return res.status(500).json({
         success: false,
         message: error.message,
       });
