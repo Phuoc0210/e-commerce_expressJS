@@ -2,41 +2,42 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('Otps', {
+    await queryInterface.createTable('otps', {
       id: {
         allowNull: false,
         primaryKey: true,
         type: Sequelize.UUID,
+        defaultValue: Sequelize.UUIDV4,
       },
-      userId: {
+      user_id: {
         type: Sequelize.UUID,
-      },
-      email: {
-        type: Sequelize.STRING,
+        allowNull: false,
+        references: {
+          model: 'users',
+          key: 'id',
+        },
       },
       otp: {
         type: Sequelize.STRING,
-      },
-      expiresAt: {
-        type: Sequelize.DATE,
-      },
-      isUsed: {
-        type: Sequelize.BOOLEAN,
-      },
-      createdAt: {
-        type: Sequelize.DATE,
-      },
-      createdAt: {
         allowNull: false,
+      },
+      expires_at: {
         type: Sequelize.DATE,
       },
-      updatedAt: {
-        allowNull: false,
+      status: {
+        type: Sequelize.INTEGER,
+      },
+      created_at: {
         type: Sequelize.DATE,
+        allowNull: false,
+      },
+      updated_at: {
+        type: Sequelize.DATE,
+        allowNull: false,
       },
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable('Otps');
+    await queryInterface.dropTable('otps');
   },
 };

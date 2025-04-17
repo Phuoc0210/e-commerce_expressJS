@@ -2,35 +2,40 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('RefreshTokens', {
+    await queryInterface.createTable('refresh_tokens', {
       id: {
         allowNull: false,
         primaryKey: true,
         type: Sequelize.UUID,
+        defaultValue: Sequelize.UUIDV4,
       },
-      userId: {
+      user_id: {
         type: Sequelize.UUID,
+        allowNull: false,
+        references: {
+          model: 'users',
+          key: 'id',
+        },
       },
       token: {
         type: Sequelize.STRING,
-      },
-      expiresAt: {
-        type: Sequelize.DATE,
-      },
-      createdAt: {
-        type: Sequelize.DATE,
-      },
-      createdAt: {
         allowNull: false,
-        type: Sequelize.DATE,
       },
-      updatedAt: {
-        allowNull: false,
+      expires_at: {
         type: Sequelize.DATE,
+        allowNull: false,
+      },
+      created_at: {
+        type: Sequelize.DATE,
+        allowNull: false,
+      },
+      updated_at: {
+        type: Sequelize.DATE,
+        allowNull: false,
       },
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable('RefreshTokens');
+    await queryInterface.dropTable('refresh_tokens');
   },
 };

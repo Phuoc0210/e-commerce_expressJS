@@ -9,25 +9,23 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
+      Otp.belongsTo(models.User, {
+        foreignKey: 'user_id',
+      });
     }
   }
   Otp.init(
     {
-      id: {
-        type: DataTypes.UUID,
-        primaryKey: true,
-        allowNull: false,
-      },
-      userId: DataTypes.UUID,
-      email: DataTypes.STRING,
+      user_id: DataTypes.UUID,
       otp: DataTypes.STRING,
-      expiresAt: DataTypes.DATE,
-      isUsed: DataTypes.BOOLEAN,
-      createdAt: DataTypes.DATE,
+      expires_at: DataTypes.DATE,
+      status: DataTypes.INTEGER,
     },
     {
       sequelize,
       modelName: 'Otp',
+      tableName: 'opts',
+      underscored: true,
     }
   );
   return Otp;

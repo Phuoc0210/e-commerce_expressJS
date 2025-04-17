@@ -9,31 +9,34 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
+      User.hasMany(models.Otp, {
+        foreignKey: 'user_id',
+      });
+      User.hasMany(models.RefreshToken, {
+        foreignKey: 'user_id',
+      });
+      User.hasMany(models.Order, {
+        foreignKey: 'user_id',
+      });
+      User.hasMany(models.Feedback, {
+        foreignKey: 'user_id',
+      });
     }
   }
   User.init(
     {
-      id: {
-        allowNull: false,
-        primaryKey: true,
-        type: DataTypes.UUID,
-      },
-      fullname: DataTypes.STRING,
       email: DataTypes.STRING,
-      phone: DataTypes.STRING,
-      address: DataTypes.STRING,
-      gender: DataTypes.BOOLEAN,
-      role: {
-        type: DataTypes.ENUM,
-        values: ['admin', 'user'],
-        defaultValue: 'user',
-      },
-      username: DataTypes.STRING,
       password: DataTypes.STRING,
+      name: DataTypes.STRING,
+      role: DataTypes.INTEGER,
+      avatar: DataTypes.STRING,
+      phone: DataTypes.STRING,
     },
     {
       sequelize,
       modelName: 'User',
+      tableName: 'users',
+      underscored: true,
     }
   );
   return User;

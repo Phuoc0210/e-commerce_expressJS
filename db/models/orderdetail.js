@@ -1,7 +1,7 @@
 'use strict';
 const { Model } = require('sequelize');
 module.exports = (sequelize, DataTypes) => {
-  class RefreshToken extends Model {
+  class OrderDetail extends Model {
     /**
      * Helper method for defining associations.
      * This method is not a part of Sequelize lifecycle.
@@ -9,23 +9,27 @@ module.exports = (sequelize, DataTypes) => {
      */
     static associate(models) {
       // define association here
-      RefreshToken.belongsTo(models.User, {
-        foreignKey: 'user_id',
+      OrderDetail.belongsTo(models.Order, {
+        foreignKey: 'order_id',
+      });
+      OrderDetail.belongsTo(models.Product, {
+        foreignKey: 'product_id',
       });
     }
   }
-  RefreshToken.init(
+  OrderDetail.init(
     {
-      user_id: DataTypes.UUID,
-      token: DataTypes.STRING,
-      expires_at: DataTypes.DATE,
+      order_id: DataTypes.UUID,
+      product_id: DataTypes.UUID,
+      price: DataTypes.INTEGER,
+      quantity: DataTypes.INTEGER,
     },
     {
       sequelize,
-      modelName: 'RefreshToken',
-      tableName: 'refresh_tokens',
+      modelName: 'OrderDetail',
+      tableName: 'order_details',
       underscored: true,
     }
   );
-  return RefreshToken;
+  return OrderDetail;
 };
