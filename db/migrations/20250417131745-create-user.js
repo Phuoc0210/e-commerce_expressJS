@@ -16,12 +16,15 @@ module.exports = {
       },
       password: {
         type: Sequelize.STRING,
+        allowNull: false,
       },
       name: {
         type: Sequelize.STRING,
+        allowNull: false,
       },
       role: {
         type: Sequelize.INTEGER,
+        allowNull: false,
       },
       avatar: {
         type: Sequelize.STRING,

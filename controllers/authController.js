@@ -1,6 +1,7 @@
 import { User, Otp, RefreshToken } from '../db/models';
 import { v4 as uuidv4 } from 'uuid';
-import transporter from '../configs/nodemailer';
+import transporter, { use } from '../configs/nodemailer';
+import generateOtpEmail from '../utils/emailTemplates/otpTemplate';
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const SALT_HASH = Number(process.env.SALT_HASH);
@@ -31,7 +32,7 @@ class authController {
 
     try {
       const user = await User.findOne({
-        where: { username: data.username },
+        where: { email: data.email },
       });
       if (user) {
         return res
@@ -42,15 +43,13 @@ class authController {
       const hash = await bcrypt.hashSync(data.password, salt);
       await User.create({
         id: uuidv4(),
-        fullname: data.fullname,
         email: data.email,
-        phone: data.phone,
-        address: data.address,
-        gender: data.gender,
-        role: 'user',
-        username: data.username,
         password: hash,
-        createdAt: Date(),
+        name: data.name,
+        role: 0,
+        avatar: data.avatar,
+        phone: data.phone,
+        created_at: Date.now(),
       });
       const mailOptions = {
         from: process.env.EMAIL_USER,
@@ -66,9 +65,9 @@ class authController {
     }
   };
   login = async (req, res) => {
-    const { username, password } = req.body;
+    const { email, password } = req.body;
 
-    if (!username || !password) {
+    if (!email || !password) {
       return res.status(400).json({
         success: false,
         message: 'Username and password are required',
@@ -77,16 +76,15 @@ class authController {
 
     try {
       const user = await User.findOne({
-        where: { username: username },
+        where: { email: email },
       });
 
       if (user) {
         const passwordMatch = await bcrypt.compare(password, user.password);
         if (passwordMatch) {
           const payload = {
-            username: user.username,
-            fullname: user.fullname,
-            role: user.role,
+            email: user.email,
+            name: user.name,
           };
 
           const accessToken = generateToken(payload, ACCESS_TOKEN_EXP);
@@ -94,9 +92,9 @@ class authController {
 
           await RefreshToken.create({
             id: uuidv4(),
-            userId: user.id,
+            user_id: user.id,
             token: refreshToken,
-            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+            expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
           });
 
           res.cookie('refreshToken', refreshToken, {
@@ -171,38 +169,34 @@ class authController {
     }
 
     try {
-      const user = await User.findOne({ where: { email } });
+      const user = await User.findOne({
+        where: { email: email },
+      });
       if (!user) {
         return res.status(404).json({
           success: false,
-          message: 'Email not found',
+          message: 'User not found',
         });
       }
       await Otp.destroy({
-        where: { email },
+        where: { user_id: user.id },
       });
       const otp = generateOTP();
       const expiresAt = new Date(Date.now() + 60 * 1000);
 
       await Otp.create({
         id: uuidv4(),
-        userId: user.id,
-        email,
+        user_id: user.id,
         otp,
-        expiresAt,
-        isUsed: false,
+        expires_at: expiresAt,
+        status: 0,
       });
 
       const mailOptions = {
         from: process.env.EMAIL_USER,
         to: email,
         subject: 'Your OTP for Password Reset',
-        html: `
-          <p>You requested to reset your password.</p>
-          <p>Your OTP is: <strong>${otp}</strong></p>
-          <p>This OTP will expire in 1 minutes.</p>
-          <p>If you did not request this, please ignore this email.</p>
-        `,
+        html: generateOtpEmail(otp),
       };
 
       await transporter.sendMail(mailOptions);
@@ -220,19 +214,25 @@ class authController {
   };
   verifyOtp = async (req, res) => {
     const { email, otp } = req.body;
-
     if (!email || !otp) {
       return res.status(400).json({
         success: false,
         message: 'Email and OTP are required',
       });
     }
-
+    const user = await User.findOne({
+      where: { email: email },
+    });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
     try {
       const otpRecord = await Otp.findOne({
-        where: { email, otp, isUsed: false },
+        where: { user_id: user.id, otp: otp, status: 0 },
       });
-
       if (!otpRecord) {
         return res.status(400).json({
           success: false,
@@ -240,15 +240,24 @@ class authController {
         });
       }
 
-      if (new Date() > new Date(otpRecord.expiresAt)) {
+      if (new Date() > new Date(otpRecord.expires_at)) {
         return res.status(400).json({
           success: false,
           message: 'OTP has expired',
         });
       }
 
-      await otpRecord.update({ isUsed: true });
-
+      await otpRecord.update({ status: 1 });
+      const payload = {
+        user_id: user.id,
+      };
+      const resetToken = generateToken(payload, process.env.RESET_TOKEN_LIFE);
+      await res.cookie('resetToken', resetToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'Strict' : 'Lax',
+        maxAge: 30 * 1000,
+      });
       return res.status(200).json({
         success: true,
         message: 'OTP verified successfully',
@@ -261,19 +270,43 @@ class authController {
     }
   };
   resetPasswordWithOtp = async (req, res) => {
-    const { email, newPassword } = req.body;
+    const resetToken = req.cookies.resetToken;
+    if (!resetToken) {
+      return res.status(401).json({
+        success: false,
+        message: 'Reset token is required. Please verify OTP first.',
+      });
+    }
 
-    if (!email || !newPassword) {
+    let decoded;
+    try {
+      decoded = jwt.verify(resetToken, process.env.JWT_SECRET_KEY);
+    } catch (err) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid or expired reset token',
+      });
+    }
+
+    const { newPassword } = req.body;
+    if (!newPassword) {
       return res.status(400).json({
         success: false,
-        message: 'Email and new password are required',
+        message: 'New password is required',
+      });
+    }
+
+    const user = await User.findByPk(decoded.user_id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
       });
     }
 
     try {
       const otpRecord = await Otp.findOne({
-        where: { email, isUsed: true },
-        order: [['createdAt', 'DESC']],
+        where: { user_id: user.id, status: 1 },
       });
 
       if (!otpRecord) {
@@ -284,13 +317,6 @@ class authController {
         });
       }
 
-      const user = await User.findOne({ where: { email } });
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          message: 'User not found',
-        });
-      }
       const isMatch = await bcrypt.compare(newPassword, user.password);
       if (isMatch) {
         return res.status(400).json({
@@ -300,11 +326,12 @@ class authController {
       }
 
       const salt = bcrypt.genSaltSync(SALT_HASH);
-      const hash = await bcrypt.hashSync(newPassword, salt);
+      const hash = bcrypt.hashSync(newPassword, salt);
 
       await user.update({ password: hash });
+      await Otp.destroy({ where: { user_id: user.id } });
 
-      await Otp.destroy({ where: { email } });
+      res.clearCookie('resetToken');
 
       return res.status(200).json({
         success: true,
@@ -317,6 +344,7 @@ class authController {
       });
     }
   };
+
   refresh = async (req, res) => {
     const refreshToken = req.cookies.refreshToken;
 
@@ -346,8 +374,8 @@ class authController {
         });
       }
 
-      const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET_KEY);
-      const user = await User.findOne({ where: { id: tokenRecord.userId } });
+      await jwt.verify(refreshToken, process.env.JWT_SECRET_KEY);
+      const user = await User.findOne({ where: { id: tokenRecord.user_id } });
       if (!user) {
         return res.status(401).json({
           success: false,
@@ -358,7 +386,6 @@ class authController {
       const payload = {
         username: user.username,
         fullname: user.fullname,
-        role: user.role,
       };
       const newAccessToken = generateToken(payload, ACCESS_TOKEN_EXP);
 
